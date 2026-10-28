@@ -1,15 +1,24 @@
 using System.Globalization;
 using System.Reflection.Metadata.Ecma335;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Intrinsics.Arm;
+using System.Runtime.Intrinsics.X86;
 using System.Threading.Channels;
 
 namespace SimplexMethodBMSTU
 {
+    struct RoundNonIntegerNumber
+    {
+        public int high_point_of_rounding;
+        public int low_point_of_rounding;
+    }
     class SimplexMethod
     {
         int n; // свободные переменные (столбики)
         int m; // базисные переменные ( cтроки)
+        int additional_m; // дополнительная переменная
+        int int_obj;
         //bool
         // 1. Столбец S
         // 2. Массив с кэфами
@@ -22,8 +31,13 @@ namespace SimplexMethodBMSTU
         decimal[] F_new = null!;
         string[] basis_variables = null!;
         string[] free_variables = null!;
-        double[] check_in_integer = null!;
+        RoundNonIntegerNumber[] check_in_integer = null!;
+        string[] basis_variables_after_checking = null!;
         decimal[,] matrix_new = null!; // массив с кэфами после преобразования
+        decimal[,] matrix_new_branch_and_bounds = null!;
+        decimal[] cols_new_add_low = null!;
+        decimal[] cols_new_add_high = null!;
+        decimal[] cols_new_add_main = null!;
         public SimplexMethod(int n, int m)
         {
             this.n = n;
@@ -40,6 +54,15 @@ namespace SimplexMethodBMSTU
             cols_new = new decimal[m];
             basis_variables = new string[m];
             free_variables = new string[n];
+        }
+        void MakeAdditional()
+        {
+            check_in_integer = new RoundNonIntegerNumber[int_obj];
+            cols_new_add_low = new decimal[m+additional_m];
+            cols_new_add_high = new decimal[m+additional_m];
+            matrix_new_branch_and_bounds = new decimal[m+additional_m,n];
+            basis_variables_after_checking = new string[m+additional_m];
+            cols_new_add_main = new decimal[m+additional_m];
         }
         public void Input()
         {
@@ -398,27 +421,106 @@ namespace SimplexMethodBMSTU
             }
         }
 
-        // Функция для заполнения массива нецелыми переменными из получившегося оптимального решения ПЗЛП
-        void CheckInInteger()
+        // Функция для поиска и округления нецелого значения для ЦЗЛП
+        RoundNonIntegerNumber FindAndRoundTheNonIntegerNum()
         {
-            for(int i = 0; i<n; ++i)
+            int_obj = 0;
+            int temp_variable;
+            for(int i = 0; i<m; ++i)
             {
                 if(cols_new[i] % 1 != 0)
                 {
-                    check_in_integer[i] = cols_new[i];
+                    additional_m = m+i+1;
+                    ++int_obj;
+                    temp_variable = cols_new[i];
+                    RoundNonIntegerNumber.low_point_of_rounding = temp_variable;
+                    RoundNonIntegerNumber.high_point_of_rounding = temp_variable+1;
+                }
+            }
+            return RoundNonIntegerNumber;
+        }
+
+
+        // Функция для перемешивания массивов при добавлении новой переменной
+        void ResizeMassive(Func<int> Indexx)
+        {
+            int indexx = Indexx;
+            MakeAdditional();
+            for(int i = 0; i<m; ++i)
+            {
+                cols_new_add[i] = cols_new[i];
+                basis_variables_after_checking[i] = basis_variables[i];
+                for(int j = 0; j<n; ++j)
+                {
+                    matrix_new_branch_and_bounds[i] = matrix_new[i];
+                }
+                if(i = m-1)
+                {
+                    if(VariableInBasisOrNo())
+                    {
+                        cols_new_add_low[m+additional_m-1] = cols_new[indexx] - RoundNonIntegerNumber.low_point_of_rounding;
+                        basis_variables_after_checking[m+additional_m] = $"x{m+additional_m}";
+                        for(int i = 0; i<n; ++i)
+                        {
+                            matrix_new_branch_and_bounds[m+additional_m,n] = -matrix_new[indexx,n];
+                        }
+                        // Переменная свободная в строке свободных членов
+                    }
+                    else
+                    {
+                        Environment.Exit(0);
+                    }
+                    if(VariableInBasisOrNo())
+                    {
+                        cols_new_add_low[m+additional_m-1] = -cols_new[indexx] + RoundNonIntegerNumber.low_point_of_rounding;
+                        basis_variables_after_checking[m+additional_m] = $"x{m+additional_m}";
+                        for(int i = 0; i<n; ++i)
+                        {
+                            matrix_new_branch_and_bounds[m+additional_m,n] = matrix_new[indexx,n];
+                        }
+                        // Переменная свободная в строке свободных членов
+                    }
+                    else
+                    {
+                        Environment.Exit(0);
+                    }
+                }
+            }
+        }
+        // ЗАМЕЧЕНИЕ: БУДУТ 3 НАБОРА МАССИВОВ: cols_new_add_high, cols_new_add_low and cols_new_add_main, в main будет класться значения массивов
+        // исходим из условий ЦФ(min/max)
+        // Необходимо добавить функцию, которая будет мешать и переменные сами, то есть массив с переменными свободными и базисными
+        // Необходимо как-то обновлять информацию в массиве cols_new, вероятно надо переопределять его размер и закидывать в функцию MakeAdditional()
+        // Необходимо сделать бесконечный цикл, пока не дойдем до всех случаев, когда у нас есть решение
+
+        // Функция для поиска нецелого числа в столбце свободных членов
+        int IndexOfNonInteger()
+        {
+            for(int i = 0; i<m; ++i)
+            {
+                if(cols_new[i] % 1 != 0)
+                {
+                    return i;
                 }
             }
         }
 
-        void CheckOnIntegerLinearProgramming()
+        // Функция для заполнения массива нецелыми переменными из получившегося оптимального решения ПЗЛП
+        int CheckInInteger()
         {
-            int temp_variable_for_rounding;
-            for(int i = 0; i<n; i++)
+            for(int i = 0; i<m; ++i)
             {
-                temp_variable_for_rounding = check_in_integer[i];
-
-
+                check_in_integer[i] = FindAndRoundTheNonIntegerNum();
+                if(cols_new[i] % 1 != 0)
+                {
+                    
+                }
+                if(i=m-1)
+                {
+                    return 1;
+                }
             }
+            return 0;
         }
 
         // Главная функция, которая запускает весь процесс нахождения и оптимизации решения целевой функции
@@ -460,12 +562,7 @@ namespace SimplexMethodBMSTU
                         PrintSimplexTabWithVariables();
                     }
                 }
-            int temp_variable_for_rounding;
-            for(int i = 0; i<n; i++)
-            {
-                temp_variable_for_rounding = check_in_integer[i];
                 
-            }
                
                 // Находим оптимальное решение пока не будет в строке функции(кроме столбца свободных членов) всех отрицательных кэфов
             }
