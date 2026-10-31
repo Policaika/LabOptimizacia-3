@@ -5,20 +5,18 @@ using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 using System.Threading.Channels;
+using SimplexMethodBMSTU;
 
 namespace SimplexMethodBMSTU
 {
-    struct RoundNonIntegerNumber
-    {
-        public int high_point_of_rounding;
-        public int low_point_of_rounding;
-    }
     class SimplexMethod
     {
         int n; // свободные переменные (столбики)
         int m; // базисные переменные ( cтроки)
         int additional_m; // дополнительная переменная
-        int int_obj;
+        public int int_obj;
+        int low_point_of_rounding;
+        int high_point_of_rounding;
         //bool
         // 1. Столбец S
         // 2. Массив с кэфами
@@ -31,13 +29,14 @@ namespace SimplexMethodBMSTU
         decimal[] F_new = null!;
         string[] basis_variables = null!;
         string[] free_variables = null!;
-        RoundNonIntegerNumber[] check_in_integer = null!;
         string[] basis_variables_after_checking = null!;
         decimal[,] matrix_new = null!; // массив с кэфами после преобразования
         decimal[,] matrix_new_branch_and_bounds = null!;
         decimal[] cols_new_add_low = null!;
         decimal[] cols_new_add_high = null!;
         decimal[] cols_new_add_main = null!;
+        decimal[] round_integer_low = null!;
+        decimal[] round_integer_high = null!;
         public SimplexMethod(int n, int m)
         {
             this.n = n;
@@ -57,12 +56,13 @@ namespace SimplexMethodBMSTU
         }
         void MakeAdditional()
         {
-            check_in_integer = new RoundNonIntegerNumber[int_obj];
             cols_new_add_low = new decimal[m+additional_m];
             cols_new_add_high = new decimal[m+additional_m];
             matrix_new_branch_and_bounds = new decimal[m+additional_m,n];
             basis_variables_after_checking = new string[m+additional_m];
             cols_new_add_main = new decimal[m+additional_m];
+            round_integer_high = new decimal[int_obj];
+            round_integer_low = new decimal[int_obj];
         }
         public void Input()
         {
@@ -421,8 +421,7 @@ namespace SimplexMethodBMSTU
             }
         }
 
-        // Функция для поиска и округления нецелого значения для ЦЗЛП
-        RoundNonIntegerNumber FindAndRoundTheNonIntegerNum()
+        void FindAndInitializateTheNonIntegerNum()
         {
             int_obj = 0;
             int temp_variable;
@@ -430,25 +429,25 @@ namespace SimplexMethodBMSTU
             {
                 if(cols_new[i] % 1 != 0)
                 {
-                    additional_m = m+i+1;
+                    additional_m = i+1;
                     ++int_obj;
                     temp_variable = cols_new[i];
-                    RoundNonIntegerNumber.low_point_of_rounding = temp_variable;
-                    RoundNonIntegerNumber.high_point_of_rounding = temp_variable+1;
+                    low_point_of_rounding = temp_variable;
+                    high_point_of_rounding = temp_variable+1;
                 }
             }
-            return RoundNonIntegerNumber;
         }
-
+        // Передача всех массивов новых 
 
         // Функция для перемешивания массивов при добавлении новой переменной
-        void ResizeMassive(Func<int> Indexx)
+        public void ResizeMassive(Func<int> Indexx)
         {
             int indexx = Indexx;
             MakeAdditional();
             for(int i = 0; i<m; ++i)
             {
-                cols_new_add[i] = cols_new[i];
+                cols_new_add_low[i] = cols_new[i];
+                cols_new_add_high[i] = cols_new[i];
                 basis_variables_after_checking[i] = basis_variables[i];
                 for(int j = 0; j<n; ++j)
                 {
@@ -456,34 +455,20 @@ namespace SimplexMethodBMSTU
                 }
                 if(i = m-1)
                 {
-                    if(VariableInBasisOrNo())
+                    cols_new_add_low[m+additional_m-1] = cols_new[indexx] - low_point_of_rounding;
+                    basis_variables_after_checking[m+additional_m] = $"x{m+additional_m}";
+                    for(int i = 0; i<n; ++i)
                     {
-                        cols_new_add_low[m+additional_m-1] = cols_new[indexx] - RoundNonIntegerNumber.low_point_of_rounding;
-                        basis_variables_after_checking[m+additional_m] = $"x{m+additional_m}";
-                        for(int i = 0; i<n; ++i)
-                        {
-                            matrix_new_branch_and_bounds[m+additional_m,n] = -matrix_new[indexx,n];
-                        }
-                        // Переменная свободная в строке свободных членов
+                        matrix_new_branch_and_bounds[m+additional_m,n] = -matrix_new[indexx,n];
                     }
-                    else
+
+                    cols_new_add_low[m+additional_m-1] = -cols_new[indexx] + low_point_of_rounding;
+                    basis_variables_after_checking[m+additional_m] = $"x{m+additional_m}";
+                    for(int i = 0; i<n; ++i)
                     {
-                        Environment.Exit(0);
+                        matrix_new_branch_and_bounds[m+additional_m,n] = matrix_new[indexx,n];
                     }
-                    if(VariableInBasisOrNo())
-                    {
-                        cols_new_add_low[m+additional_m-1] = -cols_new[indexx] + RoundNonIntegerNumber.low_point_of_rounding;
-                        basis_variables_after_checking[m+additional_m] = $"x{m+additional_m}";
-                        for(int i = 0; i<n; ++i)
-                        {
-                            matrix_new_branch_and_bounds[m+additional_m,n] = matrix_new[indexx,n];
-                        }
-                        // Переменная свободная в строке свободных членов
-                    }
-                    else
-                    {
-                        Environment.Exit(0);
-                    }
+                    // Переменная свободная в строке свободных членов
                 }
             }
         }
@@ -494,7 +479,7 @@ namespace SimplexMethodBMSTU
         // Необходимо сделать бесконечный цикл, пока не дойдем до всех случаев, когда у нас есть решение
 
         // Функция для поиска нецелого числа в столбце свободных членов
-        int IndexOfNonInteger()
+        public int IndexOfNonInteger()
         {
             for(int i = 0; i<m; ++i)
             {
@@ -505,31 +490,89 @@ namespace SimplexMethodBMSTU
             }
         }
 
-        // Функция для заполнения массива нецелыми переменными из получившегося оптимального решения ПЗЛП
-        int CheckInInteger()
+    }
+}
+
+class Branch_and_bounds
+{
+    // Переписать под МВГ
+        // Преобразование симплекс-таблицы
+        void SimplexTab(Func<int> Find_rowfunc, Func<int> Find_colfunc) 
         {
-            for(int i = 0; i<m; ++i)
+            int Find_row1 = Find_rowfunc();
+            int Find_col1 = Find_colfunc();
+            matrix_new[Find_row1,Find_col1] = 1/matrix[Find_row1,Find_col1];
+            for(int i = 0; i<n; ++i)
             {
-                check_in_integer[i] = FindAndRoundTheNonIntegerNum();
-                if(cols_new[i] % 1 != 0)
+                if(i != Find_col1)
                 {
-                    
-                }
-                if(i=m-1)
-                {
-                    return 1;
+                    matrix_new[Find_row1,i] = matrix[Find_row1,i]/matrix[Find_row1,Find_col1];
                 }
             }
-            return 0;
+            for(int i = 0; i<m; ++i)
+            {
+                if(i != Find_row1)
+                {
+                    matrix_new[i,Find_col1] = -matrix[i,Find_col1]/matrix[Find_row1,Find_col1];
+                }
+            }
+            for(int i = 0; i<m; ++i)
+            {
+                if(i != Find_row1)
+                {
+                    for(int j = 0; j<n; ++j)
+                    {
+                        if(j != Find_col1)
+                        {
+                            matrix_new[i,j] = matrix[i,j] - (matrix[Find_row1,j]*matrix[i,Find_col1])/matrix[Find_row1,Find_col1];
+                        }
+                    }
+                }
+            }
+            cols_new[Find_row1] = cols[Find_row1]/matrix[Find_row1,Find_col1];
+            for(int i = 0; i<m; ++i)
+            {
+                if(i != Find_row1)
+                {
+                    cols_new[i] = cols[i] - (matrix[i,Find_col1]*cols[Find_row1])/matrix[Find_row1,Find_col1];
+                }
+            }
+            F_new[Find_col1+1] = -F[Find_col1+1]/matrix[Find_row1,Find_col1];
+            F_new[0] = F[0] - ((F[Find_col1+1]*cols[Find_row1])/matrix[Find_row1,Find_col1]);
+            if(Find_col1 == n - 1)
+            {
+                int variable = 0;
+                for(int i = 1; i<n+1; ++i)
+                {
+                    if(i != Find_col1+1)
+                    {
+                        F_new[i] = F[i] - (F[Find_col1+1]*matrix[Find_row1,variable])/matrix[Find_row1,Find_col1];
+                        ++variable;
+                    }
+                }
+            }
+            else
+            {
+                int variable = 1;
+                for(int i = 1; i<n+1; ++i)
+                {
+                    if(i != Find_col1+1)
+                    {
+                        F_new[i] = F[i] - (F[Find_col1+1]*matrix[Find_row1,variable])/matrix[Find_row1,Find_col1];
+                        ++variable;
+                    }
+                }
+            }
         }
 
+
         // Главная функция, которая запускает весь процесс нахождения и оптимизации решения целевой функции
-        void main_func_for_oprimization()
+        void main_func_for_oprimization(SimplexMethod simpobj)
         {
-            Input();
-            PrintAfterGeneralSolver();
-            InputVariables();
-            int check_system = CheckSystem();
+            simpobj.Input();
+            simpobj.PrintAfterGeneralSolver();
+            simpobj.InputVariables();
+            int check_system = simpobj.CheckSystem();
             if(check_system == 3)
             {
                 Console.WriteLine("Система не имеет решений");
@@ -537,7 +580,7 @@ namespace SimplexMethodBMSTU
             }
             if(check_system == 5)
             {
-                if(Find_col_after_general_solver() == -1 || Find_row_after_general_solver() == -1)
+                if(simpobj.Find_col_after_general_solver() == -1 || simpobj.Find_row_after_general_solver() == -1)
                 {
                     Console.WriteLine("Система не имеет решений");
                     Environment.Exit(0);
@@ -556,13 +599,18 @@ namespace SimplexMethodBMSTU
                     }
                     if(IsItTrue)
                     {
-                        SimplexTab(Find_row_after_general_solver,Find_col_after_general_solver);
-                        Refuel_mass();
-                        SwitchVariables(Find_row_after_general_solver,Find_col_after_general_solver);
-                        PrintSimplexTabWithVariables();
+                        simpobj.SimplexTab(simpobj.Find_row_after_general_solver,simpobj.Find_col_after_general_solver);
+                        simpobj.Refuel_mass();
+                        simpobj.SwitchVariables(simpobj.Find_row_after_general_solver,simpobj.Find_col_after_general_solver);
+                        simpobj.PrintSimplexTabWithVariables();
                     }
                 }
-                
+                for(int i = 0; i<simpobj.int_obj; ++i)
+                {
+                    simpobj.FindAndInitializateTheNonIntegerNum();
+                    simpobj.ResizeMassive();
+                    
+                }
                
                 // Находим оптимальное решение пока не будет в строке функции(кроме столбца свободных членов) всех отрицательных кэфов
             }
@@ -582,13 +630,13 @@ namespace SimplexMethodBMSTU
                     }
                     if(IsItTrue)
                     {
-                        SimplexTab(Find_row,Find_col);
-                        Refuel_mass();
-                        SwitchVariables(Find_row,Find_col);
-                        PrintSimplexTabWithVariables();
+                        simpobj.SimplexTab(simpobj.Find_row,simpobj.Find_col);
+                        simpobj.Refuel_mass();
+                        simpobj.SwitchVariables(simpobj.Find_row,simpobj.Find_col);
+                        simpobj.PrintSimplexTabWithVariables();
                     }
                 }
-                if(Find_col_after_general_solver() == -1 || Find_row_after_general_solver() == -1)
+                if(simpobj.Find_col_after_general_solver() == -1 || simpobj.Find_row_after_general_solver() == -1)
                 {
                     Console.WriteLine("Система не имеет решений");
                     Environment.Exit(0);
@@ -607,26 +655,52 @@ namespace SimplexMethodBMSTU
                     }
                     if(IsItTrue)
                     {
-                        SimplexTab(Find_row_after_general_solver,Find_col_after_general_solver);
-                        Refuel_mass();
-                        SwitchVariables(Find_row_after_general_solver,Find_col_after_general_solver);
-                        PrintSimplexTabWithVariables();
+                        simpobj.SimplexTab(simpobj.Find_row_after_general_solver,simpobj.Find_col_after_general_solver);
+                        simpobj.Refuel_mass();
+                        simpobj.SwitchVariables(simpobj.Find_row_after_general_solver,simpobj.Find_col_after_general_solver);
+                        simpobj.PrintSimplexTabWithVariables();
                     }
                 }
             }
             if(Func == "max")
             {
-                ShakeFuncForPrint();
-                PrintSimplexTab();
+                simpobj.ShakeFuncForPrint();
+                simpobj.PrintSimplexTab();
             }
             else if(Func == "min")
             {
-                PrintSimplexTab();
+                simpobj.PrintSimplexTab();
             }
         }
+}
 
 
+class Branch_and_bounds : SimplexMethod
+{
+    SimplexMethod[] check_in_integer = null!;
 
+    Branch_and_bounds()
+    {
+        Make();
+    }
+
+    void Make()
+    {
+        check_in_integer = new SimplexMethod[int_obj];
+    }
+
+    void ShakeMassWithMaidenSimpTab()
+    {
+        for(int i = 0; i<int_obj; ++i)
+        {
+            check_in_integer[i] = ResizeMassive(IndexOfNonInteger);
+        }
+    }
+}
+
+
+class Main
+{
         static void Main()
         {
             Console.Write("Введите количество строк: ");
@@ -650,11 +724,4 @@ namespace SimplexMethodBMSTU
 
 
         }
-
-    }
-
-
-
-
-
 }
