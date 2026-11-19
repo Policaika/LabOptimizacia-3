@@ -541,7 +541,7 @@ class Branch_and_bounds
         cols_branch_and_bounds[SimplexMethod.m-1] = SimplexMethod.F_new[0];
     }
 
-    // Функция проверки наличия оптимального решения
+    // Функция проверки наличия оптимального решения для корня дерева
     public int CheckInSolve()
     {
         for(int i = 0; i<SimplexMethod.n; ++i)
@@ -554,17 +554,42 @@ class Branch_and_bounds
         return IsHasSolve = false;
     }
 
+    // Функция проверки наличия оптимального решения для ребенка
+    
+
+    Node MakeChild(SimplexMethod simp, Branch_and_bounds branch, Node parent, bool IsLeft)
+    {
+        if()
+        {
+            int ID = 1;
+            Node Child = new Node(simp, branch, ID++);
+
+            if(IsLeft)
+            {
+                parent.left = Child;            
+            }
+            else
+            {
+                parent.right = Child;
+            }
+        }
+
+        return *this;
+    }
+
     // Функция для запуска МВГ
     void main_function(SimplexMethod simplexobject)
     {
-        Node root = new Node(simplexobject, null, 0);
         
     }
 
     void InitialiseBinaryTree(SimplexMethod simplexobject)
     {
         Node root = new Node(simplexobject, null, 0);
-
+        if(CheckInSolve())
+        {
+            
+        }
     }
         void FindAndInitializateTheNonIntegerNum()
         {
@@ -582,12 +607,6 @@ class Branch_and_bounds
                 }
             }
         }
-
-        // ЗАМЕЧЕНИЕ: БУДУТ 3 НАБОРА МАССИВОВ: cols_new_add_high, cols_new_add_low and cols_new_add_main, в main будет класться значения массивов
-        // исходим из условий ЦФ(min/max)
-        // Необходимо добавить функцию, которая будет мешать и переменные сами, то есть массив с переменными свободными и базисными
-        // Необходимо как-то обновлять информацию в массиве cols_new, вероятно надо переопределять его размер и закидывать в функцию MakeAdditional()
-        // Необходимо сделать бесконечный цикл, пока не дойдем до всех случаев, когда у нас есть решение
 
         // Функция для поиска нецелого числа в столбце свободных членов
         public int IndexOfNonInteger()   
@@ -682,6 +701,8 @@ class Node
     int? left { get; set; }
     int? right { get; set; }
     int? parents { get; set; }
+    int? VariableValue { get; set; }
+    string? VariableName { get; set; }
 
     Node(SimplexMethod? simp, Branch_and_bounds? branch, int? ID)
     {
