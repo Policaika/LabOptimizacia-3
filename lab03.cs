@@ -669,7 +669,7 @@ class Branch_and_bounds
     // Функция для поиска разрешающего столбца
     public int Find_col()
     {
-        for(int i = 0; i<SimplexMethod.n; ++i)
+        for(int i = 0; i<SimplexMethod.n+1; ++i)
         {
             if(cols_branch_and_bounds_new[i] < 0)
             {
@@ -696,7 +696,7 @@ class Branch_and_bounds
         {
             return -1;
         }
-        for(int i = 0; i<SimplexMethod.n; ++i)
+        for(int i = 0; i<SimplexMethod.n+1; ++i)
         {
             for(int j = 0; j<SimplexMethod.m; ++j)
             {
@@ -730,73 +730,63 @@ class Branch_and_bounds
         return -1;
     }
 
-    // Переписать под МВГ
+        // Переписать под МВГ
         // Преобразование симплекс-таблицы
         void SimplexTab(Func<int> Find_rowfunc, Func<int> Find_colfunc) 
         {
             int Find_row = Find_rowfunc();
             int Find_col = Find_colfunc();
             matrix_branch_and_bounds_new_additional[Find_row,Find_col] = 1/matrix_branch_and_bounds_new[Find_row,Find_col];
-            for(int i = 0; i<n; ++i)
+            for(int i = 0; i<SimplexMethod.m; ++i)
             {
                 if(i != Find_col)
                 {
-                    matrix_branch_and_bounds_new_additional[Find_row1,i] = matrix[Find_row1,i]/matrix[Find_row1,Find_col1];
+                    matrix_branch_and_bounds_new_additional[Find_row,i] = matrix_branch_and_bounds_new[Find_row,i]/matrix_branch_and_bounds_new[Find_row,Find_col];
                 }
             }
-            for(int i = 0; i<m; ++i)
+            for(int i = 0; i<SimplexMethod.n+1; ++i)
             {
-                if(i != Find_row1)
+                if(i != Find_row)
                 {
-                    matrix_new[i,Find_col1] = -matrix[i,Find_col1]/matrix[Find_row1,Find_col1];
+                    matrix_branch_and_bounds_new_additional[i,Find_col] = -matrix_branch_and_bounds_new[i,Find_col]/matrix_branch_and_bounds_new[Find_row,Find_col];
                 }
             }
-            for(int i = 0; i<m; ++i)
+            for(int i = 0; i<SimplexMethod.n+1; ++i)
             {
-                if(i != Find_row1)
+                if(i != Find_row)
                 {
-                    for(int j = 0; j<n; ++j)
+                    for(int j = 0; j<SimplexMethod.m; ++j)
                     {
-                        if(j != Find_col1)
+                        if(j != Find_col)
                         {
-                            matrix_new[i,j] = matrix[i,j] - (matrix[Find_row1,j]*matrix[i,Find_col1])/matrix[Find_row1,Find_col1];
+                            matrix_branch_and_bounds_new_additional[i,j] = matrix_branch_and_bounds_new[i,j] - (matrix_branch_and_bounds_new[Find_row,j]*matrix_branch_and_bounds_new[i,Find_col])/matrix_branch_and_bounds_new[Find_row,Find_col];
                         }
                     }
                 }
             }
-            cols_new[Find_row1] = cols[Find_row1]/matrix[Find_row1,Find_col1];
-            for(int i = 0; i<m; ++i)
+            cols_branch_and_bounds_new_additional[Find_row] = cols_branch_and_bounds_new[Find_row]/matrix_branch_and_bounds_new[Find_row,Find_col];
+            for(int i = 0; i<SimplexMethod.n+1; ++i)
             {
-                if(i != Find_row1)
+                if(i != Find_row)
                 {
-                    cols_new[i] = cols[i] - (matrix[i,Find_col1]*cols[Find_row1])/matrix[Find_row1,Find_col1];
+                    cols_branch_and_bounds_new_additional[i] = cols_branch_and_bounds_new[i] - (matrix_branch_and_bounds_new[i,Find_col]*cols_branch_and_bounds_new[Find_row])/matrix_branch_and_bounds_new[Find_row,Find_col];
                 }
             }
-            F_new[Find_col1+1] = -F[Find_col1+1]/matrix[Find_row1,Find_col1];
-            F_new[0] = F[0] - ((F[Find_col1+1]*cols[Find_row1])/matrix[Find_row1,Find_col1]);
-            if(Find_col1 == n - 1)
+            F_branch_and_bounds_new_additional[Find_col1] = -F_branch_and_bounds_new[Find_col]/matrix_branch_and_bounds[Find_row,Find_col];
+            for(int i = 0; i<SimplexMethod.n+1; ++i)
             {
-                int variable = 0;
-                for(int i = 1; i<n+1; ++i)
+                if(i != Find_row)
                 {
-                    if(i != Find_col1+1)
+                    for(int j = 0; j<SimplexMethod.m; ++j)
                     {
-                        F_new[i] = F[i] - (F[Find_col1+1]*matrix[Find_row1,variable])/matrix[Find_row1,Find_col1];
-                        ++variable;
+                        if(j != Find_col)
+                        {
+                            F_branch_and_bounds_new_additional[j] = F_branch_and_bounds_new[j] - (matrix_branch_and_bounds_new[Find_row,j]*matrix_branch_and_bounds_new[i,Find_col])/matrix_branch_and_bounds_new[Find_row,Find_col];
+                        }                        
                     }
+
                 }
-            }
-            else
-            {
-                int variable = 1;
-                for(int i = 1; i<n+1; ++i)
-                {
-                    if(i != Find_col1+1)
-                    {
-                        F_new[i] = F[i] - (F[Find_col1+1]*matrix[Find_row1,variable])/matrix[Find_row1,Find_col1];
-                        ++variable;
-                    }
-                }
+
             }
         }
 }
