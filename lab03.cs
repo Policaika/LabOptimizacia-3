@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.IO.Compression;
 using System.Reflection.Metadata.Ecma335;
@@ -6,24 +7,25 @@ using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 using System.Threading.Channels;
+using System.Threading.Tasks.Dataflow;
 using SimplexMethodBMSTU;
 
 namespace SimplexMethodBMSTU
 {
     class SimplexMethod
     {
-        int n { get; private set; } // свободные переменные (столбики)
-        int m { get; private set; } // базисные переменные ( cтроки) l;;'''''';''/> ;;;;; ;  /l90
+        public int n { get; private set; } // свободные переменные (столбики)
+        public int m { get; private set; } // базисные переменные ( cтроки) l;;'''''';''/> ;;;;; ;  /l90
         public int int_obj { get; private set; }
         decimal[] cols = null!; // cтолбец s
-        decimal[] cols_new = null!; // cтолбец s новый
+        public decimal[] cols_new = null!; // cтолбец s новый
         decimal[,] matrix = null!; // массив с кэфами
         decimal[] F = null!;
-        string Func = null!; // Определение функции (max/min)
-        decimal[] F_new = null!;
-        string[] basis_variables = null!;
-        string[] free_variables = null!;
-        decimal[,] matrix_new = null!; // массив с кэфами после преобразования
+        public string Func = null!; // Определение функции (max/min)
+        public decimal[] F_new = null!;
+        public string[] basis_variables = null!;
+        public string[] free_variables = null!;
+        public decimal[,] matrix_new = null!; // массив с кэфами после преобразования
         public SimplexMethod(int n, int m)
         {
             this.n = n;
@@ -399,7 +401,7 @@ namespace SimplexMethodBMSTU
         }
 
         // Главная функция, которая запускает весь процесс нахождения и оптимизации решения целевой функции
-        void main_func_for_oprimization()
+        public void main_func_for_oprimization()
         {
             Input();
             PrintAfterGeneralSolver();
@@ -503,66 +505,122 @@ namespace SimplexMethodBMSTU
 // Метод Ветвей и границ
 class Branch_and_bounds
 {
+    int n;
+    int m;
     bool IsHasSolve;
     string[] basis_variables_branch_and_bounds = null!;
-    decimal[] matrix_branch_and_bounds = null!;
+    decimal[,] matrix_branch_and_bounds = null!;
     decimal[] F_branch_and_bounds = null!;
     decimal[] cols_branch_and_bounds = null!;
     string[] basis_variables_branch_and_bounds_new = null!;
-    decimal[] matrix_branch_and_bounds_new = null!;
+    decimal[,] matrix_branch_and_bounds_new = null!;
     decimal[] F_branch_and_bounds_new = null!;
     decimal[] cols_branch_and_bounds_new = null!;
     string[] basis_variables_branch_and_bounds_new_additional = null!;
-    decimal[] matrix_branch_and_bounds_new_additional = null!;
+    decimal[,] matrix_branch_and_bounds_new_additional = null!;
     decimal[] F_branch_and_bounds_new_additional = null!;
     decimal[] cols_branch_and_bounds_new_additional = null!;
     
+    public Branch_and_bounds(int n, int m)
+    {
+        this.n = m;
+        this.m = n;
+    }
 
     void Make()
     {
-        matrix_branch_and_bounds = new decimal[SimplexMethod.n,SimplexMethod.m];
-        F_branch_and_bounds = new decimal[SimplexMethod.m];
-        cols_branch_and_bounds = new decimal[SimplexMethod.n+1];
-        basis_variables_branch_and_bounds = new string[SimplexMethod.n+1];
-        basis_variables_branch_and_bounds_new = new string[SimplexMethod.n+1];
-        matrix_branch_and_bounds_new = new decimal[SimplexMethod.n,SimplexMethod.m];
-        F_branch_and_bounds_new = new decimal[SimplexMethod.m];
-        cols_branch_and_bounds_new = new decimal[SimplexMethod.n+1];
-        basis_variables_branch_and_bounds_new_additional = new string[SimplexMethod.n+1];
-        matrix_branch_and_bounds_new_additional = new string[SimplexMethod.n+1];
-        F_branch_and_bounds_new_additional = new decimal[SimplexMethod.m];
-        cols_branch_and_bounds_new_additional = new decimal[SimplexMethod.n+1];
+        matrix_branch_and_bounds = new decimal[m+1,n];
+        F_branch_and_bounds = new decimal[n];
+        cols_branch_and_bounds = new decimal[m+1];
+        basis_variables_branch_and_bounds = new string[m+1];
+        basis_variables_branch_and_bounds_new = new string[m+1];
+        matrix_branch_and_bounds_new = new decimal[m+1,n];
+        F_branch_and_bounds_new = new decimal[n];
+        cols_branch_and_bounds_new = new decimal[m+1];
+        basis_variables_branch_and_bounds_new_additional = new string[m+1];
+        matrix_branch_and_bounds_new_additional = new decimal[m+1,n];
+        F_branch_and_bounds_new_additional = new decimal[n];
+        cols_branch_and_bounds_new_additional = new decimal[m+1];
+    }
+
+    // Функция печати
+    public void PrintBranchAndBounds()
+    {
+        Console.WriteLine();
+        Console.WriteLine("Получившаяся симплекс таблица:");
+        Console.Write("\t" + "S_i0" + "\t");
+        // for(int i = 0; i<SimplexMethod.m; ++i)
+        // {
+        //     Console.Write(free_variables[i] + "\t");
+        // }
+        // Console.WriteLine();
+        for(int i = 0; i<m+1; ++i)
+        {
+            // Console.Write(basis_variables_branch_and_bounds_new_additional[i] + "\t");
+            Console.Write($"{cols_branch_and_bounds_new_additional[i]:F2}" + "\t");
+            for(int j = 0; j<n; ++j)
+            {
+                Console.Write($"{matrix_branch_and_bounds_new_additional[i,j]:F2}" + "\t");
+            }
+            Console.WriteLine("");
+        }
+        Console.Write("F" + "\t");
+        for(int i = 0; i<n; ++i)
+        {
+            Console.Write($"{F_branch_and_bounds_new_additional[i]:F2}" + "\t");
+        }
+        Console.WriteLine($"\n\nF = {cols_branch_and_bounds_new_additional[n]:F2}");
     }
 
     // Функция для копирования массивов при добавлении новой переменной, которую мы оставляем пустой в данной функции
-    public void CopyMassives()
+    public void CopyMassives(SimplexMethod simpobj)
     {
-        int count = 1;
-        Make();
-        for(int i = 0; i<SimplexMethod.m; ++i)
+        if(CheckInSolve(simpobj))
         {
-            if(i != 0)
+            int count = 1;
+            Make();
+            for(int i = 0; i<m; ++i)
             {
-                ++count;
+                if(i != 0)
+                {
+                    ++count;
+                }
+                basis_variables_branch_and_bounds[i] = simpobj.basis_variables[i];
+                F_branch_and_bounds[i] = simpobj.cols_new[i];
+                cols_branch_and_bounds[i] = simpobj.F_new[count];
+                for(int j = 0; j<n; ++j)
+                {
+                    matrix_branch_and_bounds[j,i] = simpobj.matrix_new[i,j];
+                }
             }
-            basis_variables_branch_and_bounds[i] = SimplexMethod.basis_variables[i];
-            F_branch_and_bounds[i] = SimplexMethod.cols_new[i];
-            cols_branch_and_bounds[i] = SimplexMethod.F_new[count];
-            for(int j = 0; j<SimplexMethod.n; ++j)
-            {
-                matrix_branch_and_bounds[j,i] = SimplexMethod.matrix_new[i,j];
-            }
+            cols_branch_and_bounds[simpobj.n-1] = simpobj.F_new[0];
+            basis_variables_branch_and_bounds_new[simpobj.n] = $"x{simpobj.m + simpobj.n + 1}";   
         }
-        cols_branch_and_bounds[SimplexMethod.n-1] = SimplexMethod.F_new[0];
-        cols_branch_and_bounds_new[SimplexMethod.n] = $"x{SimplexMethod.m + SimplexMethod.n + 1}";
+        else
+        {
+            Console.WriteLine("Целевая функция уже имеет целочисленное решение");
+        }
     }
 
     // Функция проверки наличия оптимального решения для корня дерева
+    public bool CheckInSolve(SimplexMethod simpobj)
+    {
+        for(int i = 0; i<m; ++i)
+        {
+            if(simpobj.cols_new[i] % 1 != 0)
+            {
+                return IsHasSolve = true;
+            }
+        }
+        return IsHasSolve = false;
+    }
+
+    // Функция проверки наличия оптимального решения
     public bool CheckInSolve()
     {
-        for(int i = 0; i<SimplexMethod.n; ++i)
+        for(int i = 0; i<n; ++i)
         {
-            if(SimplexMethod.cols_new[i] % 1 == 0)
+            if(cols_branch_and_bounds[i] % 1 != 0)
             {
                 return IsHasSolve = true;
             }
@@ -571,25 +629,95 @@ class Branch_and_bounds
     }
 
     // Функция проверки наличия оптимального решения для ребенка
-    
-
-    Node MakeChild(Branch_and_bounds branch, Node parent, bool? IsLeft)
+    Node? MakeChild(Branch_and_bounds branch, Node parent, bool IsLeft)
     {
+        Node? Child = null;
         if(CheckInSolve())
         {
-            Node Child = new Node(branch);
+            Child = new Node(branch);
 
             if(IsLeft)
             {
                 CopyClass("low");
-                
-                parent.left = Child;            
+                int temp = CheckSystem();
+                if(temp == 3)
+                {
+                    Console.WriteLine("Система не имеет решений");
+                    return null;
+                }
+                if(temp == 5)
+                {
+                    for(int i = 0; i<n; ++i)
+                    {
+                        if(F_branch_and_bounds_new[i] > 0)
+                        {
+                            SimplexTab(() => Find_row(Find_cols_in_func),Find_cols_in_func);
+                            Refresh_massives();
+                            PrintBranchAndBounds();
+                            parent.left = Child;
+                        }
+                    }
+                }
+                if(temp == 4)
+                {
+                    for(int i = 0; i<m+1; ++i)
+                    {
+                        if(cols_branch_and_bounds_new[i] < 0)
+                        {
+                            for(int j = 0; j<n; ++j)
+                            {
+                                if(matrix_branch_and_bounds_new[i,j] < 0)
+                                {
+                                    SimplexTab(() => Find_row(Find_col),Find_col);
+                                    Refresh_massives();
+                                    PrintBranchAndBounds();
+                                    parent.left = Child;
+                                }
+                            }
+                        }
+                    }
+                }
             }
             else
             {
                 CopyClass("high");
-
-                parent.right = Child;
+                int temp = CheckSystem();
+                if(temp == 3)
+                {
+                    Console.WriteLine("Система не имеет решений");
+                }
+                if(temp == 5)
+                {
+                    for(int i = 0; i<n; ++i)
+                    {
+                        if(F_branch_and_bounds_new[i] > 0)
+                        {
+                            SimplexTab(() => Find_row(Find_cols_in_func),Find_cols_in_func);
+                            Refresh_massives();
+                            PrintBranchAndBounds();
+                            parent.right = Child;
+                        }
+                    }
+                }
+                if(temp == 4)
+                {
+                    for(int i = 0; i<m+1; ++i)
+                    {
+                        if(cols_branch_and_bounds_new[i] < 0)
+                        {
+                            for(int j = 0; j<n; ++j)
+                            {
+                                if(matrix_branch_and_bounds_new[i,j] < 0)
+                                {
+                                    SimplexTab(() => Find_row(Find_col),Find_col);
+                                    Refresh_massives();
+                                    PrintBranchAndBounds();
+                                    parent.right = Child;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         else
@@ -597,59 +725,104 @@ class Branch_and_bounds
             Console.WriteLine("Нецелого числа в столбце свободных членов нет");
         }
 
-        MakeChild();
-        MakeChild();
-
-        return this;
+        return Child;
     }
 
-    // Функция для запуска МВГ
-    void main_function(SimplexMethod simplexobject)
+    // Функция для проверки наличия решения
+    int CheckSystem()
     {
-        
-    }
+        int CountVariable = 0;
+        bool IfHasntASolver = true;
+        for(int i = 0; i<m+1; ++i)
+        {
+            if(cols_branch_and_bounds_new[i] < 0)
+            {
+                for(int j = 0; j<n; ++j)
+                {
+                    if(matrix_branch_and_bounds_new[i,j] < 0)
+                    {
+                        IfHasntASolver = false;
+                        return 4; // Найден отрицательный элемент => разрешающий столбец, находим разрешающую строчку и продолжаем
+                        //симплекс-метод
+                    }
+                }
+            }
+            else
+            {
+                ++CountVariable; 
+            }
+        }
+        if(CountVariable == m)
+        {
+            IfHasntASolver = false;
+            return 5; // Опорное решение только, если все свободные кэфы >= 0
+            // Опорное решение найдено, продолжаем симплекс-метод
+        }
+        if(IfHasntASolver)
+        {
+            return 3; // В строке S нет отрицательных элементов => система не имеет решений
+        }
 
-    // Функция для создания и возврата корня дерева(для makechild)
-    Node ReturnParent()
-    {
-        Node root = new Node(this);
-        return root;
+        return -1;
     }
 
     // Функция для копирования и заполнения симплекс таблицы и ее дополнительной переменной в зависимости от направления округления: вверх или вниз
     void CopyClass(string direction_of_roundig)
     {
-        for(int i = 0; i<SimplexMethod.n; ++i)
+        for(int i = 0; i<m+1; ++i)
         {
-            for(int i = 0; i<SimplexMethod.m; ++i)
+            basis_variables_branch_and_bounds_new[i] = basis_variables_branch_and_bounds[i];
+            cols_branch_and_bounds_new[i] = cols_branch_and_bounds[i];
+            for(int j = 0; j<n; ++j)
             {
-                basis_variables_branch_and_bounds_new[i] = basis_variables_branch_and_bounds[i];
-                F_branch_and_bounds_new[i] = F_branch_and_bounds[i];
-                cols_branch_and_bounds_new[i] = cols_branch_and_bounds[i];
-                for(int j = 0; j<SimplexMethod.n; ++j)
-                {
-                    matrix_branch_and_bounds_new[j,i] = matrix_branch_and_bounds[j,i];
-                }
+                matrix_branch_and_bounds_new[i,j] = matrix_branch_and_bounds[i,j];
             }
-            cols_branch_and_bounds_new[SimplexMethod.m-1] = cols_branch_and_bounds[SimplexMethod.m-1];
+        }
+        for(int i = 0; i<n; ++i)
+        {
+            F_branch_and_bounds_new[i] = F_branch_and_bounds[i];
         }
 
+        // if(IndexOfNonInteger(cols_branch_and_bounds) == -1)
+        // {
+        //     Console.WriteLine
+        // }
         if(direction_of_roundig == "low")
         {
-            int temp_variable = cols_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)];
-            cols_branch_and_bounds_new[SimplexMethod.n] = temp_variable - cols_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)];
-            for(int i = 0; i<SimplexMethod.m; ++i)
+            int temp_variable = (int)cols_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)];
+            cols_branch_and_bounds_new[m] = temp_variable - cols_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)];
+            for(int i = 0; i<n; ++i)
             {
-                matrix_branch_and_bounds_new[IndexOfNonInteger(cols_branch_and_bounds)] = matrix_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)];
+                matrix_branch_and_bounds_new[m,i] = matrix_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds),i];
             }
         }
         else if(direction_of_roundig == "high")
         {
-            int temp_variable = cols_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)] + 1;
-            cols_branch_and_bounds_new[SimplexMethod.n] = temp_variable - cols_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)];
-            for(int i = 0; i<SimplexMethod.m; ++i)
+            int temp_variable = (int)cols_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)] + 1;
+            cols_branch_and_bounds_new[m] = temp_variable - cols_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)];
+            for(int i = 0; i<n; ++i)
             {
-                matrix_branch_and_bounds_new[IndexOfNonInteger(cols_branch_and_bounds)] = -matrix_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds)];
+                matrix_branch_and_bounds_new[m,i] = -matrix_branch_and_bounds[IndexOfNonInteger(cols_branch_and_bounds),i];
+            }
+        }
+    }
+
+    // Функция для перемешивания массивов
+    void Refresh_massives()
+    {
+        for(int i = 0; i<m+1; ++i)
+        {
+            cols_branch_and_bounds_new[i] = cols_branch_and_bounds_new_additional[i];
+        }
+        for(int i = 0; i<n; ++i)
+        {
+            F_branch_and_bounds_new[i] = F_branch_and_bounds_new_additional[i];
+        }
+        for(int i = 0; i<m+1; ++i)
+        {
+            for(int j = 0; j<n; ++j)
+            {
+                matrix_branch_and_bounds_new[i,j] = matrix_branch_and_bounds_new_additional[i,j];
             }
         }
     }
@@ -657,23 +830,24 @@ class Branch_and_bounds
     // Функция для поиска нецелого числа в столбце свободных членов
     public int IndexOfNonInteger(decimal[] array)   
     {
-        for(int i = 0; i<SimplexMethod.m; ++i)
+        for(int i = 0; i<n; ++i)
         {
             if(array[i] % 1 != 0)
             {
                 return i;
             }
         }
+        return -1;
     }
 
     // Функция для поиска разрешающего столбца
     public int Find_col()
     {
-        for(int i = 0; i<SimplexMethod.n+1; ++i)
+        for(int i = 0; i<m+1; ++i)
         {
             if(cols_branch_and_bounds_new[i] < 0)
             {
-                for(int j = 0; j<SimplexMethod.m; ++j)
+                for(int j = 0; j<n; ++j)
                 {
                     if(matrix_branch_and_bounds_new[i,j] < 0)
                     {
@@ -689,25 +863,25 @@ class Branch_and_bounds
     public int Find_row(Func<int> find_col)
     {
         decimal temp_var;
-        int INFINITY = 10000000000000000000m;
-        int g;
-        int col = find_col;
-        if(find_col == -1)
+        decimal INFINITY = 10000000000000000000m;
+        int g = -1;
+        int col = find_col();
+        if(col == -1)
         {
             return -1;
         }
-        for(int i = 0; i<SimplexMethod.n+1; ++i)
+        for(int i = 0; i<m+1; ++i)
         {
-            for(int j = 0; j<SimplexMethod.m; ++j)
+            for(int j = 0; j<n; ++j)
             {
-                if(matrix_branch_and_bounds_new[i,j] != 0)
+                if(matrix_branch_and_bounds_new[i,col] != 0)
                 {
-                    if((cols_branch_and_bounds_new[i]/matrix_branch_and_bounds_new[i,j]) > 0)
+                    if((cols_branch_and_bounds_new[i]/matrix_branch_and_bounds_new[i,col]) > 0)
                     {
-                        temp_var = cols_branch_and_bounds_new[i]/matrix_branch_and_bounds_new[i,j];
+                        temp_var = cols_branch_and_bounds_new[i]/matrix_branch_and_bounds_new[i,col];
                         if(temp_var < INFINITY)
                         {
-                            g = temp_var;
+                            g = i;
                             INFINITY = temp_var;
                         }
                     }
@@ -720,7 +894,7 @@ class Branch_and_bounds
     // Функция для поиска разрешающего столбца
     public int Find_cols_in_func()
     {
-        for(int i = 0; i<SimplexMethod.m; ++i)
+        for(int i = 0; i<n; ++i)
         {
             if(F_branch_and_bounds_new[i] > 0)
             {
@@ -730,32 +904,31 @@ class Branch_and_bounds
         return -1;
     }
 
-        // Переписать под МВГ
         // Преобразование симплекс-таблицы
         void SimplexTab(Func<int> Find_rowfunc, Func<int> Find_colfunc) 
         {
             int Find_row = Find_rowfunc();
             int Find_col = Find_colfunc();
             matrix_branch_and_bounds_new_additional[Find_row,Find_col] = 1/matrix_branch_and_bounds_new[Find_row,Find_col];
-            for(int i = 0; i<SimplexMethod.m; ++i)
+            for(int i = 0; i<n; ++i)
             {
                 if(i != Find_col)
                 {
                     matrix_branch_and_bounds_new_additional[Find_row,i] = matrix_branch_and_bounds_new[Find_row,i]/matrix_branch_and_bounds_new[Find_row,Find_col];
                 }
             }
-            for(int i = 0; i<SimplexMethod.n+1; ++i)
+            for(int i = 0; i<m+1; ++i)
             {
                 if(i != Find_row)
                 {
                     matrix_branch_and_bounds_new_additional[i,Find_col] = -matrix_branch_and_bounds_new[i,Find_col]/matrix_branch_and_bounds_new[Find_row,Find_col];
                 }
             }
-            for(int i = 0; i<SimplexMethod.n+1; ++i)
+            for(int i = 0; i<m+1; ++i)
             {
                 if(i != Find_row)
                 {
-                    for(int j = 0; j<SimplexMethod.m; ++j)
+                    for(int j = 0; j<n; ++j)
                     {
                         if(j != Find_col)
                         {
@@ -765,19 +938,19 @@ class Branch_and_bounds
                 }
             }
             cols_branch_and_bounds_new_additional[Find_row] = cols_branch_and_bounds_new[Find_row]/matrix_branch_and_bounds_new[Find_row,Find_col];
-            for(int i = 0; i<SimplexMethod.n+1; ++i)
+            for(int i = 0; i<m+1; ++i)
             {
                 if(i != Find_row)
                 {
                     cols_branch_and_bounds_new_additional[i] = cols_branch_and_bounds_new[i] - (matrix_branch_and_bounds_new[i,Find_col]*cols_branch_and_bounds_new[Find_row])/matrix_branch_and_bounds_new[Find_row,Find_col];
                 }
             }
-            F_branch_and_bounds_new_additional[Find_col1] = -F_branch_and_bounds_new[Find_col]/matrix_branch_and_bounds[Find_row,Find_col];
-            for(int i = 0; i<SimplexMethod.n+1; ++i)
+            F_branch_and_bounds_new_additional[Find_col] = -F_branch_and_bounds_new[Find_col]/matrix_branch_and_bounds_new[Find_row,Find_col];
+            for(int i = 0; i<m+1; ++i)
             {
                 if(i != Find_row)
                 {
-                    for(int j = 0; j<SimplexMethod.m; ++j)
+                    for(int j = 0; j<n; ++j)
                     {
                         if(j != Find_col)
                         {
@@ -789,21 +962,66 @@ class Branch_and_bounds
 
             }
         }
+
+    // Функция для создания и возврата корня дерева
+    Node ReturnParent()
+    {
+        Node root = new Node(this);
+        return root;
+    }
+
+    // Функция для рекурсивного запуска построения потомков
+    void BuildTree(Node root)
+    {
+        Branch_and_bounds branch = root.branch_and_bounds!;
+
+        if(!branch.CheckInSolve())
+        {
+            Console.WriteLine("Найдено целочисленное решение");
+            return;
+        }
+
+        Node? left_child = branch.MakeChild(branch, root, true);
+
+        if(left_child != null)
+        {
+            BuildTree(left_child);
+        }
+
+        Node? right_child = branch.MakeChild(branch, root, false);
+
+        if (right_child != null)
+        {
+            BuildTree(right_child);
+        }
+    }
+
+    // Функция для запуска МВГ
+    public void main_function(SimplexMethod simplexMethod)
+    {        
+        CopyMassives(simplexMethod);
+        
+        Node root = ReturnParent();
+
+        Console.WriteLine("\n" + "Начинаем МВГ");
+
+        BuildTree(root);
+    }
 }
 
 
 class Node
 {
-    Branch_and_bounds? branch_and_bounds { get; private set;}
+    public Branch_and_bounds? branch_and_bounds { get; private set;}
 
-    int? left { get; set; }
-    int? right { get; set; }
+    public Node? left { get; set; }
+    public Node? right { get; set; }
     int? parents { get; set; }
     int? VariableValue { get; set; }
     string? VariableName { get; set; }
     bool? IsItNonInteger { get; set; } // Переменная для опредления наличия решения
 
-    Node(Branch_and_bounds? branch)
+    public Node(Branch_and_bounds? branch)
     {
         branch_and_bounds = branch;
     }
@@ -812,29 +1030,21 @@ class Node
 
 class Start
 {
-        static void Main()
-        {
-            Console.Write("Введите количество строк: ");
-            int m = int.Parse(Console.ReadLine()!);
+    static void Main()
+    {
+        Console.Write("Введите количество строк: ");
+        int m = int.Parse(Console.ReadLine()!);
 
-            Console.Write("Введите количество столбцов: ");
-            int n = int.Parse(Console.ReadLine()!);
+        Console.Write("Введите количество столбцов: ");
+        int n = int.Parse(Console.ReadLine()!);
 
-            var simplexMethod = new SimplexMethod(n, m);
-            simplexMethod.main_func_for_oprimization();
+        var simplexMethod = new SimplexMethod(n, m);
+        simplexMethod.main_func_for_oprimization();
 
+        Branch_and_bounds obj1 = new Branch_and_bounds(n, m);
 
-
-
-
-
-
-
-
-
-
-
-        }
+        obj1.main_function(simplexMethod);
+    }
 }
 
 }
